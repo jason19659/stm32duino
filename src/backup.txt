@@ -1,0 +1,147 @@
+//#include "LiquidCrystal.h"
+#include <Arduino.h>
+#include <PN5180.h>
+#include <PN5180ISO15693.h>
+#include "Constant.h"
+
+#define LED PC13
+
+#define PN5180_NSS PB13
+#define PN5180_BUSY PB14
+#define PN5180_RST PB15
+
+byte armsUp[8] = {0b00100, 0b01010, 0b00100, 0b10101, 0b01110, 0b00100, 0b00100, 0b01010};
+byte armsDown[8] = {0b00100, 0b01010, 0b00100, 0b00100, 0b01110, 0b10101, 0b00100, 0b01010};
+
+//LiquidCrystal lcd(L_RS, L_RW, L_E, L_D4, L_D5, L_D6, L_D7);
+
+PN5180ISO15693 nfc(PN5180_NSS, PN5180_BUSY, PN5180_RST);
+
+int status = 0;
+
+// void showHappyGuy(int pos)
+// {
+//     lcd.setCursor(pos, 1);         // go to position
+//     lcd.print(char(random(0, 2))); // show one of the two custom characters
+//     delay(150);                    // wait so it can be seen
+//     lcd.setCursor(pos, 1);         // go to position again
+//     lcd.print(" ");                // delete character
+// }
+
+void setup()
+{
+    Serial.begin(9600);
+    Serial.println("123321");
+
+
+    nfc.begin();
+    pinMode(LED, OUTPUT);
+
+    nfc.reset();
+
+
+    uint8_t productVersion[2];
+    nfc.readEEprom(PRODUCT_VERSION, productVersion, sizeof(productVersion));
+
+    char a[17];
+
+    sprintf(a, "PV=%d.%d", productVersion[0], productVersion[1]);
+    Serial.println(a);
+    // lcd.home();
+    // lcd.setCursor(0, 0);
+    // lcd.print(a);
+
+    uint8_t firmwareVersion[2];
+    nfc.readEEprom(FIRMWARE_VERSION, firmwareVersion, sizeof(firmwareVersion));
+
+    sprintf(a, "FV=%d.%d", firmwareVersion[0], firmwareVersion[1]);
+    Serial.println(a);
+    // lcd.setCursor(0, 1);
+    // lcd.print(a);
+
+    uint8_t eepromVersion[2];
+    nfc.readEEprom(EEPROM_VERSION, eepromVersion, sizeof(eepromVersion));
+
+    sprintf(a, "EV=%d.%d", eepromVersion[0], eepromVersion[1]);
+    Serial.println(a);
+    // lcd.setCursor(8, 0);
+    // lcd.print(a);
+
+    nfc.setupRF();
+
+
+    //lcd.createChar(0, armsUp);   // load character to the LCD
+    //lcd.createChar(1, armsDown); // load character to the LCD
+
+    // lcd.home(); // go home
+    //lcd.print("LiquidCrystal_SR");
+}
+
+uint32_t loopCnt = 0;
+bool errorFlag = false;
+
+void loop()
+{
+    
+    if (errorFlag)
+    {
+        
+        uint32_t irqStatus = nfc.getIRQStatus();
+        //showIRQStatus(irqStatus);
+
+        if (0 == (RX_SOF_DET_IRQ_STAT & irqStatus))
+        { // no card detected
+
+            //lcd.setCursor(0, 0);
+            Serial.println(F("*** No card detected!"));
+        }
+
+        nfc.reset();
+        nfc.setupRF();
+
+        errorFlag = false;
+
+        delay(1000);
+    }
+
+
+
+    char a[18];
+
+    uint8_t uid[8];
+    ISO15693ErrorCode rc = nfc.getInventory(uid);
+    if (ISO15693_EC_OK != rc)
+    {
+
+        Serial.print(F("Error in getInventory: "));
+        //Serial.println(nfc.strerror(rc));
+
+        // lcd.setCursor(0, 1);
+        // sprintf(a,"%d",rc);
+        // lcd.print(a);
+        //nfc.strerror(rc);
+        errorFlag = true;
+    }
+    
+    for (int i = 0; i < 8; i++)
+    {
+        Serial.print(uid[7-i], HEX); // LSB is first
+
+        if (i < 2) Serial.print(":");
+    }
+
+    Serial.println("detect card success");
+    //Serial.println(a);
+
+
+    delay(10000);
+
+    // put your main code here, to run repeatedly:
+
+    // for (int i = 0; i <= 15; i++)
+    //     showHappyGuy(i);
+    // for (int i = 15; i >= 0; i--)
+    //     showHappyGuy(i);
+
+    //digitalWrite(LED, digitalRead(PN5180_BUSY));
+}

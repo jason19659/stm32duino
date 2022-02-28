@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.nginx": "nginx",
+        "string_view": "cpp",
+        "stm32f10x_gpio.h": "c",
+        "stm32f10x_rcc.h": "c"
+    }
+}
